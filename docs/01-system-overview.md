@@ -79,9 +79,15 @@ graph TB
 | Vector DB | OpenSearch 2.x+ (k-NN plugin) | k-NN 검색 플러그인 필수 |
 | Embedding Model | sentence-transformers/all-MiniLM-L6-v2 | 또는 한국어 특화 모델 |
 | Reranker | BAAI/bge-reranker-v2-m3 | 다국어 지원, 성능 우수 |
-| LLM | 로컬 Ollama | http://211.239.158.245:11434 |
+| LLM | LMStudio (OpenAI 호환) | http://127.0.0.1:1234/v1 |
 | Document Pipeline | LangChain / PyMuPDF / markdown2 | 문서 파싱 및 청킹 |
 | Session Storage | Redis + PostgreSQL | 단기/장기 메모리 분리 |
+
+## LLM API (LMStudio)
+
+- **URL**: `http://127.0.0.1:1234/v1`
+- **호환성**: OpenAI API 호환 (chat completions, embeddings)
+- **사용 모델**: qwen3.6-35b-a3b-claude-4.7-opus-reasoning-distilled-apex
 
 ## 데이터 흐름 (채팅)
 

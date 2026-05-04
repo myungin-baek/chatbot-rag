@@ -9,7 +9,7 @@
 | Reranker Service | 별도 서버 | 8GB+ | bge-reranker-v2-m3 |
 | Redis | 별도 서버 | 2GB+ | 세션 저장소 |
 | PostgreSQL | 별도 서버 | 4GB+ | 장기 메모리 |
-| 로컬 LLM (Ollama) | 127.0.0.1 | GPU 권장 | Ollama |
+| LMStudio (LLM API) | 127.0.0.1 | - | OpenAI 호환 API |
 
 ## 프로젝트 디렉토리 구조
 

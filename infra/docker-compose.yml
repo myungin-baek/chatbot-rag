@@ -59,7 +59,7 @@ services:
       - OPENSEARCH_URL=http://opensearch:9200
       - REDIS_URL=redis://redis:6379
       - DATABASE_URL=postgresql+asyncpg://admin:secret@postgresql:5432/chatbot
-      - OLLAMA_URL=http://host.docker.internal:11434
+      - LMSTUDIO_URL=http://host.docker.internal:1234/v1
     depends_on:
       - opensearch
       - redis

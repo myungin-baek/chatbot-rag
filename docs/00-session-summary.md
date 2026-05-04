@@ -4,7 +4,7 @@
 
 RAG (Retrieval-Augmented Generation) 기반 AI 채팅봇 시스템 아키텍처 설계 완료.
 
-- **LLM**: 로컬 Ollama (`http://127.0.0.1:11434`)
+- **LLM**: LMStudio (OpenAI 호환, `http://127.0.0.1:1234/v1`)
 - **Vector DB**: OpenSearch 2.x+ (k-NN plugin)
 - **Frontend**: React SPA + Nginx (HTTP, chatbot.example.com)
 - **Backend**: FastAPI (Python 가상 환경)
