@@ -1,0 +1,95 @@
+version: '3.8'
+
+services:
+  # ─── OpenSearch (Vector DB) ──────────────
+  opensearch:
+    image: opensearchproject/opensearch:2.15.0
+    container_name: chatbot-opensearch
+    environment:
+      - discovery.type=single-node
+      - plugins.security.disabled=true
+      - OPENSEARCH_JAVA_OPTS=-Xms1g -Xmx1g
+    ports:
+      - "9200:9200"
+    volumes:
+      - opensearch-data:/usr/share/opensearch/data
+    networks:
+      - chatbot-net
+    restart: unless-stopped
+
+  # ─── Redis (Session/Cache) ──────────────
+  redis:
+    image: redis:7-alpine
+    container_name: chatbot-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - chatbot-net
+    restart: unless-stopped
+
+  # ─── PostgreSQL (Long-term Memory + Users) ──
+  postgresql:
+    image: postgres:15-alpine
+    container_name: chatbot-postgresql
+    environment:
+      POSTGRES_DB: chatbot
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: secret
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+    networks:
+      - chatbot-net
+    restart: unless-stopped
+
+  # ─── FastAPI Backend ──────────────────────
+  api:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: chatbot-api
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      - OPENSEARCH_URL=http://opensearch:9200
+      - REDIS_URL=redis://redis:6379
+      - DATABASE_URL=postgresql+asyncpg://admin:secret@postgresql:5432/chatbot
+      - OLLAMA_URL=http://host.docker.internal:11434
+    depends_on:
+      - opensearch
+      - redis
+      - postgresql
+    networks:
+      - chatbot-net
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+
+  # ─── Nginx (Frontend + Reverse Proxy) ─────
+  nginx:
+    image: nginx:alpine
+    container_name: chatbot-nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ../frontend/chatbot-frontend/dist:/usr/share/nginx/html:ro
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - api
+    networks:
+      - chatbot-net
+    restart: unless-stopped
+
+volumes:
+  opensearch-data:
+  redis-data:
+  pg-data:
+
+networks:
+  chatbot-net:
+    driver: bridge
