@@ -15,7 +15,7 @@ RAG (Retrieval-Augmented Generation) 기반 AI 채팅봇 시스템 아키텍처 
 ### 1. 아키텍처 설계 (Phase 1)
 - 단일 파일에서 기능별 하위 디렉토리 분리 (`docs/` 폴더, 총 10개 md 파일)
 - 전체 시스템 구성도 및 데이터 흐름 다이어그램 작성
-- 기술 스택 정의 (React, Nginx, FastAPI, OpenSearch, Ollama 등)
+- 기술 스택 정의 (React, Nginx, FastAPI, OpenSearch, LMStudio 등)
 
 ### 2. 데이터 파이프라인 설계
 - 지원 형식: TXT, MD, PDF (텍스트 + 이미지 OCR)
