@@ -4,7 +4,7 @@ from fastapi import FastAPI, Request, Response
 from app.middleware.request_id import RequestIDMiddleware, LoggingMiddleware
 from app.database.session import engine, SessionLocal
 from app.auth.initial_data import init_all_users
-from app.api import auth
+from app.api import auth, chat, sessions, documents
 
 app = FastAPI(title="Chatbot RAG API")
 
@@ -25,6 +25,9 @@ async def startup():
 
 # 라우터 등록
 app.include_router(auth.router)
+app.include_router(chat.router)
+app.include_router(sessions.router)
+app.include_router(documents.router)
 
 
 @app.get("/health")

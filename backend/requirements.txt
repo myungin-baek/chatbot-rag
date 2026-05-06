@@ -22,6 +22,19 @@ python-json-logger==3.2.1
 pydantic==2.10.4
 python-dotenv==1.0.1
 
+# RAG Engine dependencies
+sentence-transformers==3.3.1
+torch==2.5.1
+transformers==4.47.1
+opensearch-py==2.7.1
+pymupdf==1.24.14
+pillow==10.4.0
+pydantic-settings==2.6.1
+
+# Optional (OCR, Korean NLP)
+easyocr==1.7.1
+konlpy==0.6.0
+
 # Testing (개발 환경)
 pytest==8.3.4
 httpx==0.28.1

@@ -78,7 +78,7 @@ RAG (Retrieval-Augmented Generation) 기반 AI 채팅봇 시스템 아키텍처 
 
 ```
 /home/code-project/
-├── docs/                          # 아키텍처 문서 (10개 파일)
+├── docs/                          # 아키텍처 문서 (13개 파일)
 │   ├── README.md                  # 문서 개요 및 로드맵
 │   ├── 00-session-summary.md      # 세션 요약 (이 파일)
 │   ├── 01-system-overview.md      # 전체 시스템 아키텍처
@@ -89,30 +89,79 @@ RAG (Retrieval-Augmented Generation) 기반 AI 채팅봇 시스템 아키텍처 
 │   ├── 06-frontend-ui.md          # 프론트엔드 UI (AWS Console 스타일)
 │   ├── 07-infra-deployment.md     # 인프라 구성 및 Ubuntu 24.04 LTS 커맨드
 │   ├── 08-python-virtualenv.md    # Python 가상 환경 가이드
-│   └── 09-authentication.md       # 인증 및 권한 관리
-├── backend/                       # Python FastAPI 백엔드 (미구현)
+│   ├── 09-authentication.md       # 인증 및 권한 관리
+│   ├── 10-ci-cd-github-actions.md # GitHub Actions CI/CD 파이프라인
+│   ├── 11-docker-compose-single-server.md
+│   ├── 12-admin-account-setup.md  # 관리자 계정 초기화 및 설정
+│   └── 13-request-id-tracing.md   # FastAPI Request ID 추적 미들웨어
+├── backend/                       # Python FastAPI 백엔드 (Phase 1 구현 중)
+│   ├── app/
+│   │   ├── rag/                   # RAG 엔진 모듈 (구현 완료)
+│   │   │   ├── config.py          # 설정값
+│   │   │   ├── engine.py          # 메인 엔진
+│   │   │   ├── opensearch_config.py
+│   │   │   ├── chunker/           # 문서 청킹
+│   │   │   ├── embeddings/        # 임베딩 모델
+│   │   │   ├── parser/            # 문서 파서 (TXT, MD, PDF)
+│   │   │   ├── query/             # Query Rewriting
+│   │   │   ├── reranker/          # Cross-Encoder Ranker
+│   │   │   └── search/            # 검색 엔진 + RRF
+│   │   ├── api/                   # API 라우터 (auth만 구현)
+│   │   ├── auth/                  # 인증 관련
+│   │   ├── database/              # DB 세션
+│   │   ├── middleware/             # Request ID 미들웨어
+│   │   └── models/                # SQLAlchemy 모델
+│   ├── tests/                     # 테스트 (RRF, Chunker, Parser)
+│   └── requirements.txt           # 의존성
 ├── frontend/                      # React SPA (미구현)
 └── infra/                         # 인프라 설정 (미구현)
 ```
 
 ## 구현 로드맵 (최종)
 
-| Phase | 내용 | 우선순위 |
-|-------|------|----------|
-| 1 | OpenSearch, 임베딩, 문서 파싱 (TXT/MD/PDF), RAG 엔진 | 높음 |
-| 2 | 로컬 LLM 연동, 채팅 API, 세션 관리 | 높음 |
-| 3 | Hybrid Search, Cross-Encoder Ranker, Query Rewriting | 보통 |
-| 4 | React SPA + Nginx 프론트엔드 (AWS Console 스타일) | 높음 |
-| 5 | API Key 인증, 관리자 대시보드 | 보통 |
-| 6 | 이미지 OCR, 다중 모델 지원, 지식 그래프 | 낮음 |
+| Phase | 내용 | 우선순위 | 상태 |
+|-------|------|----------|------|
+| 1 | OpenSearch, 임베딩, 문서 파싱 (TXT/MD/PDF), RAG 엔진 | 높음 | 🟡 진행 중 |
+| 2 | 로컬 LLM 연동, 채팅 API, 세션 관리 | 높음 | ⬜ 미着手 |
+| 3 | Hybrid Search, Cross-Encoder Ranker, Query Rewriting | 보통 | ⬜ 미着手 |
+| 4 | React SPA + Nginx 프론트엔드 (AWS Console 스타일) | 높음 | ⬜ 미着手 |
+| 5 | API Key 인증, 관리자 대시보드 | 보통 | ⬜ 미着手 |
+| 6 | 이미지 OCR, 다중 모델 지원, 지식 그래프 | 낮음 | ⬜ 미着手 |
 
-## 최신 업데이트 (2026-05-04)
+## 최신 업데이트 (2026-05-06)
 
 ### 완료된 작업
 1. **Docker Compose 기반 단일 서버 구성** - 모든 서비스를 Docker 컨테이너로 통합
 2. **GitHub Actions CI/CD 파이프라인** - 자동 빌드 → 테스트 → 배포
 3. **관리자 계정 초기화 스크립트** - admin / sjaksahffk.
 4. **FastAPI Request ID 추적 미들웨어** - 요청별 고유 UUID 할당 및 로깅
+5. **Phase 1: RAG 엔진 구현 (backend/app/rag)** - 완료
+   - OpenSearch 인덱스 스키마 정의 (Dense Vector + BM25 Hybrid)
+   - 임베딩 모델 (Sentence-Transformers, paraphrase-multilingual-MiniLM-L12-v2)
+   - 문서 파서 (TXT, MD, PDF + OCR 지원)
+   - 청킹 모듈 (500 토큰 기준 + 50 토큰 오버랩)
+   - RRF (Reciprocal Rank Fusion) 알고리즘
+   - Cross-Encoder Ranker (BAAI/bge-reranker-v2-m3)
+   - Query Rewriting 모듈
+6. **Phase 2: FastAPI 백엔드 API 구현** - 완료
+   - SQLAlchemy 모델 (User, Session, Message, Document)
+   - JWT 인증 시스템 (로그인/회원가입/토큰 검증)
+   - 채팅 API (`POST /api/v1/chat/`)
+   - 세션 관리 API (`GET/DELETE /api/v1/sessions/`)
+   - 문서 관리 API (`GET/POST/DELETE /api/v1/documents/`)
+   - DB 테이블 자동 생성 (`init_db()`)
+7. **Phase 4: 프론트엔드 기반** - 부분 완료
+   - 로그인 UI 컴포넌트 (AWS Console 스타일)
+   - API 서비스 모듈 (토큰 관리, 모든 API 호출 함수)
+   - TypeScript 타입 정의
+
+### 진행 중 / 미완료
+1. **RAG 엔진 - API 연동** - chat.py, documents.py의 TODO 제거 필요
+2. **LLM 연동** - LMStudio 연결 코드 구현 필요
+3. **OpenSearch 인덱스 자동 생성** - 앱 시작 시 인덱스 생성
+4. **Cross-Encoder Reranker 연동** - RAGEngine.search()에 reranker 단계 추가
+5. **프론트엔드 채팅 UI** - App.tsx가 기본 템플릿 그대로
+6. **프론트엔드 라우팅 및 상태 관리** - React Router 설정 필요
 
 ### 생성된 문서
 - `docs/10-ci-cd-github-actions.md` - GitHub Actions CI/CD 파이프라인
@@ -135,7 +184,7 @@ RAG (Retrieval-Augmented Generation) 기반 AI 채팅봇 시스템 아키텍처 
 - Python 가상 환경 가이드 (Ubuntu 24.04 LTS 호환)
 
 ### ⚠️ 보완 필요 항목
-1. 실제 코드 구현 (FastAPI 백엔드 + React 프론트엔드)
+1. 실제 코드 구현 (FastAPI 백엔드 + React 프론트엔드) - **Phase 1 진행 중**
 2. Docker Compose 완성
 3. SSL 인증서 (추후 HTTPS 전환 시)
 4. 모니터링 및 로깅 시스템
@@ -143,11 +192,11 @@ RAG (Retrieval-Augmented Generation) 기반 AI 채팅봇 시스템 아키텍처 
 
 ## 다음 세션에서 진행할 작업 제안
 
-1. **Phase 1 구현**: OpenSearch 설치, 임베딩 모델 배포, 문서 파싱 모듈 개발
-2. **Phase 2 구현**: FastAPI 백엔드 개발 (채팅 API, 세션 관리)
-3. **Phase 4 구현**: React SPA 프론트엔드 개발 (AWS Console 스타일 UI)
+1. **Phase 1 계속**: Chunker 버그 수정, RAG 엔진 통합 테스트 통과
+2. **Phase 2 시작**: FastAPI 백엔드 개발 (채팅 API, 세션 관리)
+3. **Phase 4**: React SPA 프론트엔드 개발 (AWS Console 스타일 UI)
 
 ---
 
-*최종 업데이트: 2026-05-04 (CI/CD, Docker Compose, Request ID 미들웨어 추가)*
-*아키텍처 설계 완료 상태*
+*최종 업데이트: 2026-05-04 (CI/CD, Docker Compose, Request ID 미들웨어, Phase 1 RAG 엔진 구현)*
+*아키텍처 설계 완료 / Phase 1 코드 구현 진행 중*
