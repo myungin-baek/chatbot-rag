@@ -176,7 +176,7 @@ RAG (Retrieval-Augmented Generation) 기반 AI 채팅봇 시스템 아키텍처 
 ### ✅ 커버되는 기능
 - RAG 기반 검색 (OpenSearch k-NN + Cross-Encoder)
 - 문서 업로드 및 벡터화 (TXT/MD/PDF, OCR 포함)
-- 로컬 LLM 연동 (Ollama)
+- 로컬 LLM 연동 (LMStudio)
 - 메모리 아키텍처 (단기/장기 기억)
 - API 엔드포인트 설계 (REST + WebSocket)
 - React SPA 프론트엔드 (AWS Console 스타일, 플로팅 채팅 아이콘)
@@ -184,19 +184,23 @@ RAG (Retrieval-Augmented Generation) 기반 AI 채팅봇 시스템 아키텍처 
 - Python 가상 환경 가이드 (Ubuntu 24.04 LTS 호환)
 
 ### ⚠️ 보완 필요 항목
-1. 실제 코드 구현 (FastAPI 백엔드 + React 프론트엔드) - **Phase 1 진행 중**
-2. Docker Compose 완성
-3. SSL 인증서 (추후 HTTPS 전환 시)
-4. 모니터링 및 로깅 시스템
-5. 백업 전략
+1. RAG 엔진과 API 연동 (chat.py, documents.py TODO 제거)
+2. LLM 연동 코드 구현
+3. OpenSearch 인덱스 자동 생성
+4. 프론트엔드 채팅 UI 구현
+5. SSL 인증서 (추후 HTTPS 전환 시)
+6. 모니터링 및 로깅 시스템
+7. 백업 전략
 
 ## 다음 세션에서 진행할 작업 제안
 
-1. **Phase 1 계속**: Chunker 버그 수정, RAG 엔진 통합 테스트 통과
-2. **Phase 2 시작**: FastAPI 백엔드 개발 (채팅 API, 세션 관리)
-3. **Phase 4**: React SPA 프론트엔드 개발 (AWS Console 스타일 UI)
+1. **RAG 엔진 - API 연동**: chat.py, documents.py 의 TODO 제거 및 실제 RAGEngine 연동
+2. **LLM 연동**: LMStudio (OpenAI 호환 API) 연결 코드 구현
+3. **OpenSearch 인덱스 자동 생성**: 앱 시작 시 인덱스 생성
+4. **프론트엔드 채팅 UI**: 메시지 입력/표시, 세션 목록, React Router 설정
+5. **Docker Compose 전체 빌드 테스트**: 모든 서비스 통합 테스트
 
 ---
 
-*최종 업데이트: 2026-05-04 (CI/CD, Docker Compose, Request ID 미들웨어, Phase 1 RAG 엔진 구현)*
-*아키텍처 설계 완료 / Phase 1 코드 구현 진행 중*
+*최종 업데이트: 2026-05-06 (Phase 2 백엔드 API 전량 구현, 프론트엔드 로그인 UI, 구현 현황 문서 추가)*
+*아키텍처 설계 완료 / Phase 1-2 코드 구현 완료 / Phase 4 부분 완료*
