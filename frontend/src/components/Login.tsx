@@ -4,16 +4,14 @@
  */
 
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import type { FormEvent } from 'react';
 import { login } from '../services/api';
 import type { LoginRequest } from '../services/api';
 import './Login.css';
 
-interface LoginProps {
-  onLoginSuccess: () => void;
-}
-
-export default function Login({ onLoginSuccess }: LoginProps) {
+export default function Login() {
+  const navigate = useNavigate();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -27,7 +25,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
     try {
       const data: LoginRequest = { username, password };
       await login(data);
-      onLoginSuccess();
+      navigate('/', { replace: true });
     } catch (err: any) {
       setError(err.message || '로그인에 실패했습니다.');
     } finally {

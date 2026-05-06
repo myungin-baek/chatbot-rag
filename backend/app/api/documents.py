@@ -100,8 +100,8 @@ async def upload_document(
             file_path = tmp.name
 
         # 4. RAG 엔진으로 문서 처리
-        # TODO: 실제 RAGEngine 연동
-        result = _process_document(file_path, ext)
+        rag_engine = RAGEngine.get_instance()
+        result = rag_engine.ingest_document(file_path)
 
         # 5. DB에 문서 정보 저장
         doc = Document(
@@ -141,24 +141,13 @@ async def upload_document(
             os.unlink(file_path)
 
 
-def _process_document(file_path: str, file_ext: str) -> dict:
-    """문서 처리 (임시 구현).
-    
-    TODO: 실제 RAGEngine.ingest_document() 연동.
-    """
-    return {
-        "chunks_count": 0,
-        "message": "문서가 처리되었습니다.",
-    }
-
-
 @router.delete("/{document_id}")
 async def delete_document(
     document_id: str,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """문서 삭제."""
+    """문서 삭제 (OpenSearch 벡터도 함께 삭제)."""
     try:
         doc_uuid = uuid.UUID(document_id)
     except ValueError:
@@ -178,7 +167,12 @@ async def delete_document(
             detail="문서를 찾을 수 없습니다.",
         )
 
-    # TODO: OpenSearch에서 해당 문서의 벡터도 삭제
+    # OpenSearch에서 해당 문서의 벡터 삭제
+    try:
+        rag_engine = RAGEngine.get_instance()
+        rag_engine.delete_document_vectors(str(doc_uuid))
+    except Exception as e:
+        logger.warning(f"Failed to delete vectors from OpenSearch: {e}")
 
     db.delete(doc)
     db.commit()

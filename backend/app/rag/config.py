@@ -35,6 +35,12 @@ class RAGSettings(BaseSettings):
     query_rewrite_enabled: bool = True
     num_rewritten_queries: int = 3
 
+    # LLM (LMStudio OpenAI 호환)
+    llm_base_url: str = "http://127.0.0.1:1234/v1"
+    llm_model: str = "lmstudio-community"
+    llm_temperature: float = 0.7
+    llm_max_tokens: int = 2000
+
     model_config = {"env_file": ".env", "env_prefix": "RAG_"}
 
 

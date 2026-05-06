@@ -155,19 +155,27 @@ RAG (Retrieval-Augmented Generation) 기반 AI 채팅봇 시스템 아키텍처 
    - API 서비스 모듈 (토큰 관리, 모든 API 호출 함수)
    - TypeScript 타입 정의
 
-### 진행 중 / 미완료
-1. **RAG 엔진 - API 연동** - chat.py, documents.py의 TODO 제거 필요
-2. **LLM 연동** - LMStudio 연결 코드 구현 필요
-3. **OpenSearch 인덱스 자동 생성** - 앱 시작 시 인덱스 생성
-4. **Cross-Encoder Reranker 연동** - RAGEngine.search()에 reranker 단계 추가
-5. **프론트엔드 채팅 UI** - App.tsx가 기본 템플릿 그대로
-6. **프론트엔드 라우팅 및 상태 관리** - React Router 설정 필요
+### 진행 중 / 미완료 (2026-05-06 업데이트)
+1. **LLM 연동** - LMStudio 연결 코드 구현 필요 (서버 실행 후 테스트)
+2. **.env 파일 생성** - `infra/.env` 환경변수 설정
+3. **WebSocket 스트리밍** - 실시간 응답 스트리밍
+4. **Docker Compose 전체 빌드 테스트**
+5. **단위 테스트 작성**
+
+### 완료된 작업 (2026-05-06 추가)
+1. **문서 API RAG 엔진 연동** - `_process_document()` → `RAGEngine.ingest_document()`
+2. **문서 삭제 시 OpenSearch 벡터 삭제** - `delete_document_vectors()` 호출
+3. **OpenSearch 인덱스 자동 생성** - 앱 시작 시 `chatbot_documents` 인덱스 생성 (k-NN 매핑 포함)
+4. **프론트엔드 채팅 UI 구현** - 세션 목록, 메시지 입력/표시, 출처 표시
+5. **React Router 설정** - `/login`, `/` 라우팅 + 인증 보호
+6. **Vite 8.x → 6.x 버전 조정** - Node.js 20.18 호환
 
 ### 생성된 문서
 - `docs/10-ci-cd-github-actions.md` - GitHub Actions CI/CD 파이프라인
 - `docs/11-docker-compose-single-server.md` - Docker Compose 단일 서버 구성
 - `docs/12-admin-account-setup.md` - 관리자 계정 초기화 및 설정
 - `docs/13-request-id-tracing.md` - FastAPI Request ID 추적 미들웨어
+- `docs/14-implementation-status.md` - 구현 현황 (최신)
 
 ## 적합도 검토 결과
 
@@ -183,24 +191,21 @@ RAG (Retrieval-Augmented Generation) 기반 AI 채팅봇 시스템 아키텍처 
 - 관리자 로그인 및 권한 관리 (JWT 기반, 일반/관리자 역할 구분)
 - Python 가상 환경 가이드 (Ubuntu 24.04 LTS 호환)
 
-### ⚠️ 보완 필요 항목
-1. RAG 엔진과 API 연동 (chat.py, documents.py TODO 제거)
-2. LLM 연동 코드 구현
-3. OpenSearch 인덱스 자동 생성
-4. 프론트엔드 채팅 UI 구현
-5. SSL 인증서 (추후 HTTPS 전환 시)
-6. 모니터링 및 로깅 시스템
-7. 백업 전략
+### ⚠️ 보완 필요 항목 (업데이트)
+1. LLM 연동 코드 구현 (서버 실행 후 테스트)
+2. SSL 인증서 (추후 HTTPS 전환 시)
+3. 모니터링 및 로깅 시스템
+4. 백업 전략
 
 ## 다음 세션에서 진행할 작업 제안
 
-1. **RAG 엔진 - API 연동**: chat.py, documents.py 의 TODO 제거 및 실제 RAGEngine 연동
-2. **LLM 연동**: LMStudio (OpenAI 호환 API) 연결 코드 구현
-3. **OpenSearch 인덱스 자동 생성**: 앱 시작 시 인덱스 생성
-4. **프론트엔드 채팅 UI**: 메시지 입력/표시, 세션 목록, React Router 설정
-5. **Docker Compose 전체 빌드 테스트**: 모든 서비스 통합 테스트
+1. **.env 파일 생성 + Docker Compose 빌드 테스트**
+2. **LLM 서버 실행 및 전체 파이프라인 테스트**
+3. **WebSocket 스트리밍 구현**
+4. **단위 테스트 작성**
+5. **이미지 OCR 연동**
 
 ---
 
-*최종 업데이트: 2026-05-06 (Phase 2 백엔드 API 전량 구현, 프론트엔드 로그인 UI, 구현 현황 문서 추가)*
-*아키텍처 설계 완료 / Phase 1-2 코드 구현 완료 / Phase 4 부분 완료*
+*최종 업데이트: 2026-05-06 (Phase 3 API 연동 완료, 프론트엔드 채팅 UI + 라우팅 구현)*
+*아키텍처 설계 완료 / Phase 1-3 코드 구현 완료 / 전체 진행률 약 70%*

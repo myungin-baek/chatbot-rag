@@ -122,3 +122,21 @@ class OpenSearchEngine:
         """문서를 인덱스에서 삭제합니다."""
         self.client.delete(index=index_name, id=doc_id)
         return True
+
+    def index_exists(self, index_name: str) -> bool:
+        """인덱스가 존재하는지 확인합니다."""
+        return self.client.indices.exists(index=index_name)
+
+    def delete_index(self, index_name: str) -> bool:
+        """인덱스를 삭제합니다."""
+        if self.client.indices.exists(index=index_name):
+            self.client.indices.delete(index=index_name)
+            return True
+        return False
+
+    def delete_documents_by_filter(self, index_name: str, query: dict) -> dict:
+        """조건에 맞는 문서를 일괄 삭제합니다."""
+        body = {
+            "query": query,
+        }
+        return self.client.delete_by_query(index=index_name, body=body)

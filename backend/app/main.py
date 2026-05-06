@@ -15,12 +15,51 @@ app.add_middleware(LoggingMiddleware)
 
 @app.on_event("startup")
 async def startup():
-    """앱 시작 시 관리자 계정 초기화"""
+    """앱 시작 시 관리자 계정 초기화 및 OpenSearch 인덱스 생성"""
+    # 1. 관리자 계정 초기화
     db = SessionLocal()
     try:
         init_all_users(db)
     finally:
         db.close()
+
+    # 2. OpenSearch 인덱스 자동 생성
+    try:
+        from app.rag.engine import RAGEngine
+        rag_engine = RAGEngine.get_instance()
+        index_name = "chatbot_documents"
+        
+        if not rag_engine.os_client.exists(index_name=index_name):
+            rag_engine.os_client.create_index(
+                index_name=index_name,
+                mappings={
+                    "properties": {
+                        "document_id": {"type": "keyword"},
+                        "file_name": {"type": "text", "fields": {"keyword": {"type": "keyword"}}},
+                        "file_type": {"type": "keyword"},
+                        "title": {"type": "text"},
+                        "content": {"type": "text"},
+                        "embedding": {
+                            "type": "knn_vector",
+                            "dimension": 768,
+                            "method": {
+                                "name": "hnsw",
+                                "space_type": "l2",
+                                "engine": "faiss",
+                                "parameters": {"ef_construction": 128, "m": 16},
+                            },
+                        },
+                        "metadata": {"type": "object"},
+                        "chunk_index": {"type": "integer"},
+                        "token_count": {"type": "integer"},
+                    }
+                },
+            )
+            logger.info(f"Created OpenSearch index: {index_name}")
+        else:
+            logger.info(f"OpenSearch index already exists: {index_name}")
+    except Exception as e:
+        logger.warning(f"Failed to create OpenSearch index (will be created on first ingest): {e}")
 
 
 # 라우터 등록

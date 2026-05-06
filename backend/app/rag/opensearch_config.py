@@ -98,3 +98,29 @@ INDEX_SCHEMAS = {
     INDEX_DOCUMENTS: DOCUMENTS_MAPPING,
     INDEX_SESSIONS: SESSIONS_MAPPING,
 }
+
+
+def create_indexes(os_client) -> dict:
+    """OpenSearch 인덱스를 자동으로 생성합니다.
+    
+    Args:
+        os_client: OpenSearchEngine 인스턴스
+        
+    Returns:
+        생성 결과 딕셔너리
+    """
+    results = {}
+    
+    for index_name, schema in INDEX_SCHEMAS.items():
+        try:
+            # 인덱스가 이미 존재하면 삭제
+            if os_client.index_exists(index_name):
+                os_client.delete_index(index_name)
+            
+            # 인덱스 생성
+            os_client.create_index(index_name, schema)
+            results[index_name] = "created"
+        except Exception as e:
+            results[index_name] = f"error: {str(e)}"
+    
+    return results

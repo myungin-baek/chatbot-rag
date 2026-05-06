@@ -1,5 +1,6 @@
 """채팅 API - RAG 기반 채팅 엔드포인트."""
 
+import logging
 import uuid
 from typing import Optional
 
@@ -12,8 +13,11 @@ from app.models.user import User
 from app.models.session import Session
 from app.models.message import Message
 from app.auth.security import get_current_user
+from app.rag.engine import RAGEngine
 
 router = APIRouter(prefix="/api/v1/chat", tags=["chat"])
+
+logger = logging.getLogger(__name__)
 
 
 class ChatRequest(BaseModel):
@@ -70,9 +74,16 @@ async def chat(
     )
     db.add(user_message)
 
-    # 3. RAG 검색 (실제 LLM 응답은 추후 구현)
-    # TODO: RAGEngine 연동
-    rag_response = _generate_rag_response(request.message, session.session_id)
+    # 3. RAG 엔진으로 응답 생성
+    try:
+        rag_engine = RAGEngine.get_instance()
+        rag_response = rag_engine.generate_response(request.message)
+    except Exception as e:
+        logger.error(f"RAG engine error: {e}")
+        rag_response = {
+            "content": f"[오류] RAG 엔진 처리 중 오류가 발생했습니다: {str(e)}",
+            "sources": [],
+        }
 
     # 4. 어시스턴트 응답 저장
     assistant_message = Message(
@@ -92,14 +103,3 @@ async def chat(
         sources=rag_response.get("sources", []),
         timestamp=assistant_message.created_at.isoformat(),
     )
-
-
-def _generate_rag_response(query: str, session_id: uuid.UUID) -> dict:
-    """RAG 기반 응답 생성 (임시 구현).
-    
-    TODO: 실제 RAGEngine + LLM 연동으로 교체.
-    """
-    return {
-        "content": f"[임시 응답] '{query}'에 대한 RAG 기반 검색 결과를 생성합니다. (LLM 연동 예정)",
-        "sources": [],
-    }

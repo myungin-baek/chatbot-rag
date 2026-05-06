@@ -3,6 +3,7 @@
 BAAI/bge-reranker-v2-m3 모델 사용 (다국어 지원)
 """
 
+import torch
 from typing import List, Optional
 
 try:

@@ -5,8 +5,10 @@
 2. Multi-Vector Search (Dense + BM25)
 3. RRF 결합
 4. Cross-Encoder Reranking
+5. LLM 응답 생성
 """
 
+import logging
 from typing import List, Optional
 
 from app.rag.config import settings
@@ -16,10 +18,16 @@ from app.rag.chunker.token_chunker import TokenChunker
 from app.rag.search.opensearch_engine import OpenSearchEngine
 from app.rag.search.rrf import rrf_combine_with_scores
 from app.rag.query.rewriter import QueryRewriter
+from app.rag.llm.llm_client import LLMClient
+from app.rag.reranker.cross_encoder_reranker import CrossEncoderReranker
+
+logger = logging.getLogger(__name__)
 
 
 class RAGEngine:
     """RAG 엔진 메인 클래스."""
+
+    _instance = None
 
     def __init__(self, os_client=None):
         self.embedding_model = SentenceTransformerEmbeddings.get_instance()
@@ -29,6 +37,8 @@ class RAGEngine:
             min_chunk_size=settings.min_chunk_size,
         )
         self.query_rewriter = QueryRewriter(llm_client=None)
+        self.llm = LLMClient.get_instance()
+        self.reranker = CrossEncoderReranker(model_name=settings.cross_encoder_model_name)
 
         if os_client:
             self.os_client = os_client
@@ -40,6 +50,13 @@ class RAGEngine:
                 username=settings.opensearch_username,
                 password=settings.opensearch_password,
             )
+
+    @classmethod
+    def get_instance(cls, os_client=None) -> "RAGEngine":
+        """싱글톤 인스턴스 반환."""
+        if cls._instance is None:
+            cls._instance = cls(os_client=os_client)
+        return cls._instance
 
     def ingest_document(self, file_path: str) -> dict:
         """문서를 파싱 → 청킹 → 임베딩 → OpenSearch 저장합니다."""
@@ -84,7 +101,20 @@ class RAGEngine:
         }
 
     def search(self, query: str, top_k: int = 5) -> dict:
-        """RAG 검색 파이프라인을 실행합니다."""
+        """RAG 검색 파이프라인을 실행합니다.
+        
+        1. 쿼리 전처리 및 재작성
+        2. Dense + BM25 검색
+        3. RRF 결합
+        4. Cross-Encoder Reranking
+        
+        Args:
+            query: 검색 쿼리
+            top_k: 반환할 결과 수
+            
+        Returns:
+            검색 결과 딕셔너리 (query, rewritten_queries, results)
+        """
         # 1. 쿼리 전처리 및 재작성
         rewritten_queries = self.query_rewriter._rule_based_rewrite(query)
 
@@ -116,10 +146,86 @@ class RAGEngine:
         final_fused = rrf_combine_with_scores([fused_dense, fused_bm25])
 
         # 4. Cross-Encoder Reranking (Top-N)
-        top_k_docs = final_fused[: min(settings.search_top_k, len(final_fused))]
+        candidates = final_fused[: min(settings.search_top_k, len(final_fused))]
+        
+        try:
+            ranked_docs = self.reranker.rerank(
+                query=query,
+                documents=candidates,
+                top_n=settings.rerank_top_n,
+            )
+        except Exception as e:
+            logger.warning(f"Cross-Encoder reranker failed, using RRF results: {e}")
+            ranked_docs = candidates[:settings.rerank_top_n]
 
         return {
             "query": query,
             "rewritten_queries": rewritten_queries,
-            "results": top_k_docs[:top_k],
+            "results": ranked_docs[:top_k],
         }
+
+    def generate_response(self, query: str, conversation_history: Optional[List[dict]] = None) -> dict:
+        """RAG 기반 응답을 전체 파이프라인으로 생성합니다.
+        
+        1. OpenSearch에서 관련 문서 검색
+        2. LLM에 컨텍스트 + 쿼리 전달
+        3. 응답 + 출처 반환
+        
+        Args:
+            query: 사용자 질문
+            conversation_history: 대화 히스토리 (role, content 포함)
+            
+        Returns:
+            딕셔너리 (content, sources, metadata)
+        """
+        # 1. 관련 문서 검색
+        search_result = self.search(query, top_k=settings.rerank_top_n)
+        results = search_result.get("results", [])
+
+        # 2. LLM 응답 생성
+        try:
+            content = self.llm.generate_with_context(
+                query=query,
+                context_documents=results,
+                temperature=settings.llm_temperature,
+                max_tokens=settings.llm_max_tokens,
+            )
+        except Exception as e:
+            logger.error(f"LLM generation failed: {e}")
+            content = f"[LLM 오류] 응답 생성에 실패했습니다: {str(e)}"
+
+        # 3. 출처 정보 추출
+        sources = []
+        for doc in results:
+            sources.append({
+                "document_id": doc.get("document_id", ""),
+                "file_name": doc.get("file_name", ""),
+                "content_preview": doc.get("content", "")[:200] + "...",
+                "score": doc.get("rerank_score", doc.get("rrf_score", 0)),
+            })
+
+        return {
+            "content": content,
+            "sources": sources,
+            "metadata": {
+                "rewritten_queries": search_result.get("rewritten_queries", []),
+                "search_count": len(results),
+            },
+        }
+
+    def delete_document_vectors(self, document_id: str) -> dict:
+        """OpenSearch에서 특정 문서의 모든 벡터를 삭제합니다.
+        
+        Args:
+            document_id: 삭제할 문서 ID
+            
+        Returns:
+            삭제 결과 딕셔너리
+        """
+        query = {
+            "term": {"document_id": document_id},
+        }
+        return self.os_client.delete_documents_by_filter(
+            index_name="chatbot_documents",
+            query=query,
+        )
