@@ -123,6 +123,80 @@ class LLMClient:
             return False
 
 
+    async def generate_stream(
+        self,
+        prompt: str,
+        system_prompt: Optional[str] = None,
+        temperature: float = 0.7,
+        max_tokens: int = 2000,
+    ):
+        """스트리밍 텍스트 생성 (async generator)."""
+        messages = []
+        
+        if system_prompt:
+            messages.append({"role": "system", "content": system_prompt})
+        
+        messages.append({"role": "user", "content": prompt})
+        
+        try:
+            stream = self.client.chat.completions.create(
+                model=self.model,
+                messages=messages,
+                temperature=temperature,
+                max_tokens=max_tokens,
+                stream=True,
+            )
+            for chunk in stream:
+                if chunk.choices and chunk.choices[0].delta.content:
+                    yield chunk.choices[0].delta.content
+        except Exception as e:
+            yield f"[LLM 오류] {str(e)}"
+
+    async def generate_with_context_stream(
+        self,
+        query: str,
+        context_documents: List[dict],
+        system_prompt: Optional[str] = None,
+        temperature: float = 0.7,
+        max_tokens: int = 2000,
+    ):
+        """RAG 기반 스트리밍 응답 생성."""
+        # 컨텍스트 문서 조합
+        context_text = ""
+        for i, doc in enumerate(context_documents, 1):
+            content = doc.get("content", "")
+            source = doc.get("file_name", doc.get("document_id", f"문서{i}"))
+            context_text += f"[출처 {i} ({source})]: {content}\n\n"
+        
+        # 시스템 프롬프트
+        if not system_prompt:
+            system_prompt = """너는 지식이 풍부하고 도움이 되는 AI 어시스턴트입니다.
+주어진 문서 컨텍스트를 바탕으로 사용자의 질문에 정확하고 간결하게 답변하세요.
+컨텍스트에 없는 정보는 '알 수 없습니다'라고 답변하세요.
+답변 마지막에 사용된 출처를 명시하세요."""
+        
+        # 사용자 프롬프트
+        prompt = f"""다음 문서 컨텍스트를 참고하여 질문에 답변하세요:
+
+<컨텍스트>
+{context_text}
+</컨텍스트>
+
+<질문>
+{query}
+</질문>
+
+답변:"""
+        
+        async for token in self.generate_stream(
+            prompt=prompt,
+            system_prompt=system_prompt,
+            temperature=temperature,
+            max_tokens=max_tokens,
+        ):
+            yield token
+
+
 # 설정값에 LLM 관련 옵션 추가 (config.py에 없는 경우 기본값 제공)
 def _get_llm_base_url() -> str:
     import os

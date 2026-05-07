@@ -26,6 +26,9 @@ wheels/
 .mypy_cache/
 .pytest_cache/
 
+# Docker data (local volumes)
+docker-data/
+
 # Virtual environments
 .venv/
 venv/

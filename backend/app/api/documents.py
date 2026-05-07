@@ -1,5 +1,6 @@
 """문서 관리 API - 업로드/조회/삭제."""
 
+import logging
 import os
 import uuid
 import tempfile
@@ -13,8 +14,11 @@ from app.database.session import get_db
 from app.models.user import User
 from app.models.document import Document
 from app.auth.security import get_current_user
+from app.rag.engine import RAGEngine
 
 router = APIRouter(prefix="/api/v1/documents", tags=["documents"])
+
+logger = logging.getLogger(__name__)
 
 # 허용된 파일 확장자
 ALLOWED_EXTENSIONS = {".txt", ".md", ".pdf"}

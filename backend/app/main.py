@@ -1,10 +1,13 @@
 """FastAPI 진입점."""
 
+import logging
 from fastapi import FastAPI, Request, Response
 from app.middleware.request_id import RequestIDMiddleware, LoggingMiddleware
 from app.database.session import engine, SessionLocal
 from app.auth.initial_data import init_all_users
 from app.api import auth, chat, sessions, documents
+
+logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Chatbot RAG API")
 
@@ -15,7 +18,12 @@ app.add_middleware(LoggingMiddleware)
 
 @app.on_event("startup")
 async def startup():
-    """앱 시작 시 관리자 계정 초기화 및 OpenSearch 인덱스 생성"""
+    """앱 시작 시 DB 테이블 생성, 관리자 계정 초기화 및 OpenSearch 인덱스 생성"""
+    from app.database.base import Base
+    
+    # 0. DB 테이블 자동 생성
+    Base.metadata.create_all(bind=engine)
+
     # 1. 관리자 계정 초기화
     db = SessionLocal()
     try:
@@ -29,10 +37,10 @@ async def startup():
         rag_engine = RAGEngine.get_instance()
         index_name = "chatbot_documents"
         
-        if not rag_engine.os_client.exists(index_name=index_name):
+        if not rag_engine.os_client.client.indices.exists(index=index_name):
             rag_engine.os_client.create_index(
                 index_name=index_name,
-                mappings={
+                mapping={
                     "properties": {
                         "document_id": {"type": "keyword"},
                         "file_name": {"type": "text", "fields": {"keyword": {"type": "keyword"}}},

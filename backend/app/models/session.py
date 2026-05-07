@@ -16,8 +16,8 @@ class Session(Base):
     user_id = Column(UUID(as_uuid=True), nullable=False, index=True)
     title = Column(String(255), nullable=False, default="새로운 세션")
     metadata_json = Column(JSONB, nullable=True, default=dict)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), default=datetime.utcnow)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), default=datetime.utcnow)
 
     def __repr__(self):
         return f"<Session(session_id={self.session_id}, user_id={self.user_id})>"

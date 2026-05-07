@@ -5,11 +5,11 @@
 2. Multi-Vector Search (Dense + BM25)
 3. RRF 결합
 4. Cross-Encoder Reranking
-5. LLM 응답 생성
+5. LLM 응답 생성 (일반/스트리밍)
 """
 
 import logging
-from typing import List, Optional
+from typing import AsyncGenerator, List, Optional
 
 from app.rag.config import settings
 from app.rag.embeddings.sentence_transformers import SentenceTransformerEmbeddings
@@ -212,6 +212,56 @@ class RAGEngine:
                 "search_count": len(results),
             },
         }
+
+    async def generate_response_stream(
+        self, query: str, conversation_history: Optional[List[dict]] = None
+    ) -> AsyncGenerator[tuple, None]:
+        """RAG 기반 스트리밍 응답을 생성합니다.
+
+        1. OpenSearch에서 관련 문서 검색 (동기)
+        2. LLM에 컨텍스트 + 쿼리 전달 (스트리밍)
+        3. 토큰 단위 스트림 반환
+
+        Yields:
+            (event_type, data) 튜플
+            - ("content", token_string): 콘텐츠 토큰
+            - ("sources", sources_list): 출처 정보 (마지막에 한 번)
+            - ("done", None): 스트리밍 완료
+        """
+        # 1. 관련 문서 검색 (동기 작업)
+        search_result = self.search(query, top_k=settings.rerank_top_n)
+        results = search_result.get("results", [])
+
+        # 출처 정보 추출
+        sources = []
+        for doc in results:
+            sources.append({
+                "document_id": doc.get("document_id", ""),
+                "file_name": doc.get("file_name", ""),
+                "content_preview": doc.get("content", "")[:200] + "...",
+                "score": doc.get("rerank_score", doc.get("rrf_score", 0)),
+            })
+
+        # 2. LLM 스트리밍 응답 생성
+        try:
+            async for token in self.llm.generate_with_context_stream(
+                query=query,
+                context_documents=results,
+                temperature=settings.llm_temperature,
+                max_tokens=settings.llm_max_tokens,
+            ):
+                yield ("content", token)
+
+            # 3. 출처 정보 전송
+            yield ("sources", sources)
+
+        except Exception as e:
+            logger.error(f"LLM streaming failed: {e}")
+            yield ("error", f"[LLM 오류] 응답 생성에 실패했습니다: {str(e)}")
+
+        finally:
+            # 4. 완료 신호
+            yield ("done", None)
 
     def delete_document_vectors(self, document_id: str) -> dict:
         """OpenSearch에서 특정 문서의 모든 벡터를 삭제합니다.

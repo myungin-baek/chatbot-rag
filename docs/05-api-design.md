@@ -130,7 +130,7 @@ Content-Type: multipart/form-data
 
 ## WebSocket 엔드포인트
 
-### ws://host/ws/chat
+### ws://host/ws/chat (구버전)
 
 **연결**:
 ```javascript
@@ -149,3 +149,63 @@ ws.send(JSON.stringify({
 | `chunk` | Server → Client | 스트리밍 응답 청크 |
 | `done` | Server → Client | 응답 완료 |
 | `error` | Server → Client | 에러 발생 |
+
+### ws://host/ws/stream (실제 구현, 2026-05-06)
+
+**엔드포인트**: `POST /api/v1/chat/` (REST), `ws://host/api/v1/chat/ws/stream` (WebSocket)
+
+**WebSocket 연결**:
+```javascript
+const token = localStorage.getItem('access_token');
+const ws = new WebSocket(`wss://${location.host}/api/v1/chat/ws/stream`);
+
+ws.onopen = () => {
+    // 인증 메시지 전송
+    ws.send(JSON.stringify({ type: 'connect', token }));
+};
+
+ws.onmessage = (event) => {
+    const msg = JSON.parse(event.data);
+    
+    switch (msg.type) {
+        case 'content':   // 콘텐츠 토큰
+            appendToken(msg.data);
+            break;
+        case 'sources':   // 출처 정보
+            showSources(msg.data);
+            break;
+        case 'done':      // 스트리밍 완료
+            setIsLoading(false);
+            break;
+        case 'error':     // 오류
+            showError(msg.data);
+            break;
+    }
+};
+```
+
+**메시지 타입**:
+| 타입 | 방향 | 설명 |
+|------|------|------|
+| `connect` | Client → Server | 인증 토큰 전송 |
+| `message` | Client → Server | 채팅 메시지 (`{content, session_id}`) |
+| `content` | Server → Client | 콘텐츠 토큰 (스트리밍) |
+| `sources` | Server → Client | 출처 정보 (마지막에 한 번) |
+| `done` | Server → Client | 스트리밍 완료 |
+| `error` | Server → Client | 에러 발생 |
+
+## 인증 구조 (JWT 기반, 2026-05-06 업데이트)
+
+> **참고**: 초기 설계에서는 API Key를 사용했으나, 실제 구현에서는 JWT 토큰 기반 인증을 사용합니다.
+
+### 로그인
+```bash
+POST /api/v1/auth/login
+{ "username": "admin", "password": "sjaksahffk." }
+
+# 응답
+{ "access_token": "<jwt>", "token_type": "bearer" }
+```
+
+### 토큰 사용
+모든 API 요청에 `Authorization: Bearer <token>` 헤더 추가.

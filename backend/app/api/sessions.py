@@ -24,6 +24,35 @@ class SessionInfo(BaseModel):
     message_count: int
 
 
+class CreateSessionRequest(BaseModel):
+    title: str = Field(..., min_length=1, max_length=200)
+
+
+@router.post("/", response_model=SessionInfo, status_code=status.HTTP_201_CREATED)
+async def create_session(
+    request: CreateSessionRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """새 세션 생성."""
+    new_session = Session(
+        session_id=uuid.uuid4(),
+        title=request.title,
+        user_id=current_user.user_id,
+    )
+    db.add(new_session)
+    db.commit()
+    db.refresh(new_session)
+
+    return SessionInfo(
+        session_id=str(new_session.session_id),
+        title=new_session.title,
+        created_at=new_session.created_at.isoformat(),
+        updated_at=new_session.updated_at.isoformat(),
+        message_count=0,
+    )
+
+
 class SessionDetail(BaseModel):
     session_id: str
     title: str

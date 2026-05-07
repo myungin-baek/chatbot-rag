@@ -1,6 +1,7 @@
 """커스텀 로거 - Request ID 포함 로깅 시스템."""
 
 import logging
+import os
 import sys
 from logging.config import dictConfig
 from app.middleware.request_id import get_request_id
@@ -36,19 +37,24 @@ def setup_logger(name: str | None = None) -> logging.Logger:
                 "formatter": "standard",
                 "stream": sys.stdout,
             },
-            "file": {
-                "class": "logging.handlers.RotatingFileHandler",
-                "filename": "/var/log/chatbot/app.log",
-                "maxBytes": 10485760,  # 10MB
-                "backupCount": 5,
-                "formatter": "json",
-            },
         },
         "root": {
             "level": "INFO",
-            "handlers": ["console", "file"],
+            "handlers": ["console"],
         },
     }
+
+    # 파일 로그 활성화 (디렉토리가 존재하는 경우)
+    log_dir = "/var/log/chatbot"
+    if os.path.isdir(log_dir):
+        log_config["handlers"]["file"] = {
+            "class": "logging.handlers.RotatingFileHandler",
+            "filename": f"{log_dir}/app.log",
+            "maxBytes": 10485760,  # 10MB
+            "backupCount": 5,
+            "formatter": "json",
+        }
+        log_config["root"]["handlers"].append("file")
 
     dictConfig(log_config)
 

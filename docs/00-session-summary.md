@@ -155,20 +155,16 @@ RAG (Retrieval-Augmented Generation) 기반 AI 채팅봇 시스템 아키텍처 
    - API 서비스 모듈 (토큰 관리, 모든 API 호출 함수)
    - TypeScript 타입 정의
 
-### 진행 중 / 미완료 (2026-05-06 업데이트)
+### 진행 중 / 미완료 (2026-05-07 업데이트)
 1. **LLM 연동** - LMStudio 연결 코드 구현 필요 (서버 실행 후 테스트)
-2. **.env 파일 생성** - `infra/.env` 환경변수 설정
-3. **WebSocket 스트리밍** - 실시간 응답 스트리밍
-4. **Docker Compose 전체 빌드 테스트**
-5. **단위 테스트 작성**
+2. **문서 인제스트 E2E 테스트** - PDF/TXT/MD 파일 업로드 → 벡터화 확인
 
-### 완료된 작업 (2026-05-06 추가)
-1. **문서 API RAG 엔진 연동** - `_process_document()` → `RAGEngine.ingest_document()`
-2. **문서 삭제 시 OpenSearch 벡터 삭제** - `delete_document_vectors()` 호출
-3. **OpenSearch 인덱스 자동 생성** - 앱 시작 시 `chatbot_documents` 인덱스 생성 (k-NN 매핑 포함)
-4. **프론트엔드 채팅 UI 구현** - 세션 목록, 메시지 입력/표시, 출처 표시
-5. **React Router 설정** - `/login`, `/` 라우팅 + 인증 보호
-6. **Vite 8.x → 6.x 버전 조정** - Node.js 20.18 호환
+### 완료된 작업 (2026-05-07 추가)
+1. **Docker Compose 빌드 + 실행 테스트** - 11개 버그 수정 후 전체 서비스 정상 구동 확인
+   - Nginx 볼륨 마운트 경로, OpenSearch 비밀번호, openai 패키지 등
+   - passlib bcrypt → 직접 bcrypt 사용, User 객체 반환 인증 미들웨어
+   - 세션 POST 엔드포인트 추가, updated_at 기본값 설정
+2. **API 통합 테스트** - Health, Login, Sessions CRUD, Documents, Chat API 검증 완료
 
 ### 생성된 문서
 - `docs/10-ci-cd-github-actions.md` - GitHub Actions CI/CD 파이프라인
@@ -207,5 +203,5 @@ RAG (Retrieval-Augmented Generation) 기반 AI 채팅봇 시스템 아키텍처 
 
 ---
 
-*최종 업데이트: 2026-05-06 (Phase 3 API 연동 완료, 프론트엔드 채팅 UI + 라우팅 구현)*
-*아키텍처 설계 완료 / Phase 1-3 코드 구현 완료 / 전체 진행률 약 70%*
+*최종 업데이트: 2026-05-06 (WebSocket 스트리밍, 단위 테스트, .env 생성 완료)*
+*아키텍처 설계 완료 / Phase 1-4 코드 구현 완료 + WebSocket 스트리밍 / 전체 진행률 약 80%*

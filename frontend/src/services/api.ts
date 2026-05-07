@@ -179,3 +179,63 @@ export async function deleteDocument(documentId: string): Promise<void> {
   });
   return handleResponse(response);
 }
+
+// ===== WebSocket 스트리밍 API =====
+
+export interface StreamMessage {
+  type: string;
+  data?: any;
+  session_id?: string;
+}
+
+export function createChatWebSocket(
+  onContent: (token: string) => void,
+  onSources: (sources: any[]) => void,
+  onError: (error: string) => void,
+  onDone: () => void,
+): WebSocket {
+  const token = getToken();
+  if (!token) {
+    throw new Error('인증 토큰이 없습니다.');
+  }
+
+  const protocol = API_BASE_URL.startsWith('https') ? 'wss' : 'ws';
+  const wsUrl = `${protocol}://${API_BASE_URL.replace(/^https?:\/\//, '')}/api/v1/chat/ws/stream`;
+  
+  const ws = new WebSocket(wsUrl);
+
+  ws.onopen = () => {
+    // 인증 메시지 전송
+    ws.send(JSON.stringify({ type: 'connect', token }));
+  };
+
+  ws.onmessage = (event) => {
+    try {
+      const msg: StreamMessage = JSON.parse(event.data);
+      
+      switch (msg.type) {
+        case 'content':
+          onContent(msg.data || '');
+          break;
+        case 'sources':
+          onSources(msg.data || []);
+          break;
+        case 'done':
+          onDone();
+          break;
+        case 'error':
+          onError(msg.data || '알 수 없는 오류가 발생했습니다.');
+          break;
+      }
+    } catch (err) {
+      console.error('WebSocket 메시지 파싱 실패:', err);
+    }
+  };
+
+  ws.onerror = (event) => {
+    console.error('WebSocket 오류:', event);
+    onError('연결 오류가 발생했습니다.');
+  };
+
+  return ws;
+}

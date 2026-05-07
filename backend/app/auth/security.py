@@ -5,10 +5,10 @@ from datetime import datetime, timedelta
 from jose import jwt, JWTError
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-from passlib.context import CryptContext
-
-# 비밀번호 해싱 설정
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+import bcrypt
+from sqlalchemy.orm import Session
+from app.database.session import SessionLocal
+from app.models.user import User as UserModel
 
 # JWT 설정
 SECRET_KEY = os.getenv("JWT_SECRET", "your-secret-key-change-in-production")
@@ -20,12 +20,20 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 
 def get_password_hash(password: str) -> str:
     """비밀번호 해싱 (bcrypt)"""
-    return pwd_context.hash(password)
+    salt = bcrypt.gensalt()
+    hashed = bcrypt.hashpw(password.encode("utf-8"), salt)
+    return hashed.decode("utf-8")
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """비밀번호 검증"""
-    return pwd_context.verify(plain_password, hashed_password)
+    try:
+        return bcrypt.checkpw(
+            plain_password.encode("utf-8"),
+            hashed_password.encode("utf-8"),
+        )
+    except Exception:
+        return False
 
 
 def create_access_token(data: dict, expires_delta: timedelta | None = None) -> str:
@@ -48,49 +56,26 @@ def decode_access_token(token: str) -> dict:
         )
 
 
-def get_current_user(token: str = Depends(oauth2_scheme)):
-    """현재 사용자 조회"""
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="잘못된 인증 정보",
-    )
+def get_current_user(
+    token: str = Depends(oauth2_scheme),
+) -> UserModel:
+    """현재 사용자 인증 - DB에서 실제 User 객체 조회"""
+    payload = decode_access_token(token)
+    username = payload.get("sub")
+    if not username:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="인증되지 않은 사용자",
+        )
 
+    db = SessionLocal()
     try:
-        payload = decode_access_token(token)
-        username: str = payload.get("sub")
-        if username is None:
-            raise credentials_exception
-    except JWTError:
-        raise credentials_exception
-
-    # 실제 구현에서는 DB에서 사용자 조회
-    from app.database.session import get_db
-    from app.models.user import User
-
-    db = next(get_db())
-    user = db.query(User).filter(User.username == username).first()
-
-    if user is None or not user.is_active:
-        raise credentials_exception
-
-    return user
-
-
-def require_admin(current_user=Depends(get_current_user)):
-    """관리자 권한 확인"""
-    if current_user.role != "admin":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="관리자 권한이 필요합니다.",
-        )
-    return current_user
-
-
-def require_user(current_user=Depends(get_current_user)):
-    """일반 사용자 권한 확인"""
-    if current_user.role not in ("admin", "user"):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="접근 권한이 없습니다.",
-        )
-    return current_user
+        user = db.query(UserModel).filter(UserModel.username == username).first()
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="사용자를 찾을 수 없습니다",
+            )
+        return user
+    finally:
+        db.close()

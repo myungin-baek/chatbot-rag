@@ -1,9 +1,9 @@
 /**
- * 채팅 페이지 - AWS Console 스타일 UI
+ * 채팅 페이지 - AWS Console 스타일 UI (WebSocket 스트리밍 지원)
  */
 
 import { useState, useRef, useEffect } from 'react';
-import { sendMessage, listSessions, getSession, deleteSession } from '../services/api';
+import { listSessions, getSession, deleteSession, createChatWebSocket } from '../services/api';
 import type { SessionInfo as SessionInfoType } from '../services/api';
 import type { Message } from '../types/chat';
 import './ChatPage.css';
@@ -17,6 +17,10 @@ function ChatPage() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // 스트리밍 상태 관리
+  const streamingContentRef = useRef<string>('');
+  const currentWebSocketRef = useRef<WebSocket | null>(null);
+
   // 세션 목록 로드
   useEffect(() => {
     loadSessions();
@@ -25,7 +29,16 @@ function ChatPage() {
   // 새 메시지 스크롤
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  }, [messages, streamingContentRef.current]);
+
+  // WebSocket 정리 (언마운트 시)
+  useEffect(() => {
+    return () => {
+      if (currentWebSocketRef.current) {
+        currentWebSocketRef.current.close();
+      }
+    };
+  }, []);
 
   async function loadSessions() {
     try {
@@ -49,7 +62,8 @@ function ChatPage() {
     }
   }
 
-  async function handleSend() {
+  // WebSocket 스트리밍으로 메시지 전송
+  async function handleSendWithStreaming() {
     if (!inputMessage.trim() || isLoading) return;
 
     const userMsg: Message = {
@@ -62,25 +76,110 @@ function ChatPage() {
     setMessages((prev) => [...prev, userMsg]);
     setInputMessage('');
     setIsLoading(true);
+    streamingContentRef.current = '';
+
+    // 로딩 메시지 표시
+    const loadingMsgId = `streaming-${Date.now()}`;
+    const loadingMsg: Message = {
+      message_id: loadingMsgId,
+      role: 'assistant',
+      content: '',
+      created_at: new Date().toISOString(),
+    };
+    setMessages((prev) => [...prev, loadingMsg]);
 
     try {
-      const response = await sendMessage({
-        message: inputMessage,
-        session_id: currentSessionId,
-      });
+      let receivedSessionId: string | null = null;
+      let finalSources: any[] = [];
 
-      setCurrentSessionId(response.session_id);
-      await loadSessions(); // 세션 목록 갱신
-
-      const assistantMsg: Message = {
-        message_id: response.message_id,
-        role: 'assistant',
-        content: response.content,
-        sources: response.sources,
-        created_at: response.timestamp,
+      // WebSocket 스트리밍 콜백들
+      const onContent = (token: string) => {
+        streamingContentRef.current += token;
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.message_id === loadingMsgId ? { ...msg, content: streamingContentRef.current } : msg
+          )
+        );
       };
 
-      setMessages((prev) => [...prev, assistantMsg]);
+      const onSources = (sources: any[]) => {
+        finalSources = sources;
+      };
+
+      const onError = (error: string) => {
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.message_id === loadingMsgId ? { ...msg, content: `[오류] ${error}` } : msg
+          )
+        );
+        setIsLoading(false);
+      };
+
+      const onDone = () => {
+        // 스트리밍 메시지 업데이트 (출처 포함)
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.message_id === loadingMsgId
+              ? { ...msg, sources: finalSources }
+              : msg
+          )
+        );
+
+        setIsLoading(false);
+        loadSessions(); // 세션 목록 갱신
+      };
+
+      const ws = createChatWebSocket(onContent, onSources, onError, onDone);
+
+      currentWebSocketRef.current = ws;
+
+      ws.onmessage = (event) => {
+        try {
+          const msg = JSON.parse(event.data);
+          
+          if (msg.session_id) {
+            receivedSessionId = msg.session_id;
+            setCurrentSessionId(msg.session_id);
+          }
+
+          switch (msg.type) {
+            case 'content':
+              streamingContentRef.current += msg.data || '';
+              setMessages((prev) =>
+                prev.map((m) =>
+                  m.message_id === loadingMsgId ? { ...m, content: streamingContentRef.current } : m
+                )
+              );
+              break;
+            case 'sources':
+              finalSources = msg.data || [];
+              setMessages((prev) =>
+                prev.map((m) =>
+                  m.message_id === loadingMsgId ? { ...m, sources: msg.data || [] } : m
+                )
+              );
+              break;
+            case 'done':
+              setIsLoading(false);
+              loadSessions();
+              if (receivedSessionId) {
+                setCurrentSessionId(receivedSessionId);
+              }
+              break;
+            case 'error':
+              setMessages((prev) =>
+                prev.map((m) =>
+                  m.message_id === loadingMsgId ? { ...m, content: `[오류] ${msg.data || '알 수 없는 오류'}` } : m
+                )
+              );
+              setIsLoading(false);
+              break;
+          }
+        } catch (err) {
+          console.error('WebSocket 메시지 파싱 실패:', err);
+        }
+      };
+
     } catch (err) {
       const errorMsg: Message = {
         message_id: `error-${Date.now()}`,
@@ -89,7 +188,6 @@ function ChatPage() {
         created_at: new Date().toISOString(),
       };
       setMessages((prev) => [...prev, errorMsg]);
-    } finally {
       setIsLoading(false);
     }
   }
@@ -110,7 +208,7 @@ function ChatPage() {
   function handleKeyDown(e: React.KeyboardEvent) {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      handleSend();
+      handleSendWithStreaming();
     }
   }
 
@@ -199,7 +297,7 @@ function ChatPage() {
                 rows={1}
                 disabled={isLoading}
               />
-              <button onClick={handleSend} disabled={!inputMessage.trim() || isLoading}>
+              <button onClick={handleSendWithStreaming} disabled={!inputMessage.trim() || isLoading}>
                 전송
               </button>
             </div>
