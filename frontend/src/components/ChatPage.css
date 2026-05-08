@@ -58,6 +58,61 @@
   background-color: #E4791C;
 }
 
+/* 업로드 버튼 */
+.upload-btn {
+  margin: 0 16px 8px;
+  padding: 10px;
+  background-color: #23A456;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.upload-btn:hover:not(:disabled) {
+  background-color: #1d8a47;
+}
+
+.upload-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* 업로드 상태 메시지 */
+.upload-status {
+  margin: 0 16px 8px;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.upload-status.success {
+  background-color: rgba(35, 164, 86, 0.2);
+  color: #7dcea0;
+}
+
+.upload-status.error {
+  background-color: rgba(220, 53, 69, 0.2);
+  color: #f5c6cb;
+}
+
+/* 로그아웃 버튼 */
+.logout-btn {
+  margin: 8px 16px 16px;
+  padding: 10px;
+  background-color: transparent;
+  color: #dc3545;
+  border: 1px solid #dc3545;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.logout-btn:hover {
+  background-color: rgba(220, 53, 69, 0.1);
+}
+
 .session-list {
   list-style: none;
   margin: 0;

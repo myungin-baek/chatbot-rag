@@ -2,6 +2,7 @@
 
 import logging
 from fastapi import FastAPI, Request, Response
+from fastapi.middleware.cors import CORSMiddleware
 from app.middleware.request_id import RequestIDMiddleware, LoggingMiddleware
 from app.database.session import engine, SessionLocal
 from app.auth.initial_data import init_all_users
@@ -11,9 +12,10 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Chatbot RAG API")
 
-# 미들웨어 등록 (순서 중요 - 위에서 아래로 실행)
+# 미들웨어 등록 (순서 중요 - 위에서 아래로 실행, 바깥쪽에서 안쪽으로)
 app.add_middleware(RequestIDMiddleware)
 app.add_middleware(LoggingMiddleware)
+app.add_middleware(CORSMiddleware, allow_origins=["http://localhost", "http://localhost:5173", "http://localhost:3000"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
 
 @app.on_event("startup")

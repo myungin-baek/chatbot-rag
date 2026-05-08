@@ -3,7 +3,7 @@
  */
 
 import { useState, useRef, useEffect } from 'react';
-import { listSessions, getSession, deleteSession, createChatWebSocket } from '../services/api';
+import { listSessions, getSession, deleteSession, createChatWebSocket, logout, uploadDocument } from '../services/api';
 import type { SessionInfo as SessionInfoType } from '../services/api';
 import type { Message } from '../types/chat';
 import './ChatPage.css';
@@ -15,7 +15,9 @@ function ChatPage() {
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [uploadStatus, setUploadStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // 스트리밍 상태 관리
   const streamingContentRef = useRef<string>('');
@@ -205,6 +207,31 @@ function ChatPage() {
     }
   }
 
+  async function handleFileUpload(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setUploadStatus(null);
+    setIsLoading(true);
+
+    try {
+      await uploadDocument(file);
+      setUploadStatus({ type: 'success', message: `"${file.name}" 파일이 성공적으로 업로드되었습니다.` });
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : '업로드에 실패했습니다.';
+      setUploadStatus({ type: 'error', message: `업로드 오류: ${errorMsg}` });
+    } finally {
+      setIsLoading(false);
+      // 파일 입력 초기화 (같은 파일을 다시 선택할 수 있도록)
+      event.target.value = '';
+    }
+  }
+
+  function handleLogout() {
+    logout();
+    window.location.href = '/login';
+  }
+
   function handleKeyDown(e: React.KeyboardEvent) {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -221,8 +248,32 @@ function ChatPage() {
           <button onClick={() => setIsSidebarOpen(false)} title="사이드바 닫기">✕</button>
         </div>
 
+        {/* 업로드 버튼 */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".txt,.md,.pdf"
+          onChange={handleFileUpload}
+          style={{ display: 'none' }}
+        />
+        <button className="upload-btn" onClick={() => fileInputRef.current?.click()} disabled={isLoading}>
+          📄 문서 업로드
+        </button>
+
+        {/* 업로드 상태 메시지 */}
+        {uploadStatus && (
+          <div className={`upload-status ${uploadStatus.type}`}>
+            {uploadStatus.message}
+          </div>
+        )}
+
         <button className="new-session-btn" onClick={() => { setCurrentSessionId(null); setMessages([]); }}>
           + 새 세션
+        </button>
+
+        {/* 로그아웃 버튼 */}
+        <button className="logout-btn" onClick={handleLogout}>
+          🚪 로그아웃
         </button>
 
         <ul className="session-list">

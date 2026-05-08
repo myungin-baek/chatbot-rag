@@ -14,9 +14,9 @@ class RAGSettings(BaseSettings):
     opensearch_username: str = "admin"
     opensearch_password: str = ""
 
-    # 임베딩 모델 (sentence-transformers)
-    embedding_model_name: str = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
-    embedding_dim: int = 768
+    # 임베딩 모델 (LMStudio BGE-M3)
+    embedding_model_name: str = "text-embedding-bge-m3"
+    embedding_dim: int = 1024
 
     # 청킹 설정
     chunk_size: int = 500
@@ -37,9 +37,13 @@ class RAGSettings(BaseSettings):
 
     # LLM (LMStudio OpenAI 호환)
     llm_base_url: str = "http://127.0.0.1:1234/v1"
-    llm_model: str = "lmstudio-community"
+    llm_model: str = "qwen/qwen3.6-27b"
     llm_temperature: float = 0.7
     llm_max_tokens: int = 2000
+    
+    # 임베딩 모델 (LMStudio)
+    embedding_api_url: str = "http://127.0.0.1:1234/v1"
+    embedding_model_name: str = "text-embedding-bge-m3"
 
     model_config = {"env_file": ".env", "env_prefix": "RAG_"}
 

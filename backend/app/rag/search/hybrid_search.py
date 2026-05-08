@@ -20,12 +20,15 @@ class HybridSearch(BaseSearchEngine):
 
     async def search(self, query: str, top_k: int = 10) -> List[SearchResult]:
         """하이브리드 검색을 수행합니다."""
-        # TODO: 임베딩 모델에서 쿼리 벡터 생성 필요
-        # 현재는 임시 구현
+        from app.rag.embeddings.sentence_transformers import SentenceTransformerEmbeddings
+        
+        # 임베딩 모델에서 쿼리 벡터 생성
+        embedding_model = SentenceTransformerEmbeddings.get_instance()
+        query_vector = embedding_model.embed_query(query)
         
         dense_results = self.engine.search_dense_vector(
             index_name="chatbot_documents",
-            query_vector=[0.0] * 768,  # 임시
+            query_vector=query_vector,
             k=top_k * 10,
         )
         
