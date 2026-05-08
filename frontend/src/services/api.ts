@@ -19,6 +19,13 @@ function clearToken(): void {
   localStorage.removeItem('user_info');
 }
 
+// API URL 생성 (상대 경로/절대 경로 모두 지원)
+function apiPath(path: string): string {
+  // API_BASE_URL이 루트(/)인 경우 상대 경로로 처리
+  if (API_BASE_URL === '/') return path;
+  return `${API_BASE_URL}${path}`;
+}
+
 // 기본 헤더
 async function getHeaders(contentType: string = 'application/json'): Promise<HeadersInit> {
   const headers: HeadersInit = {
@@ -56,7 +63,7 @@ export interface LoginResponse {
 }
 
 export async function login(data: LoginRequest): Promise<LoginResponse> {
-  const response = await fetch(`${API_BASE_URL}/api/v1/auth/login`, {
+  const response = await fetch(apiPath('/api/v1/auth/login'), {
     method: 'POST',
     headers: await getHeaders(),
     body: JSON.stringify(data),
@@ -86,7 +93,7 @@ export interface ChatResponse {
 }
 
 export async function sendMessage(data: ChatRequest): Promise<ChatResponse> {
-  const response = await fetch(`${API_BASE_URL}/api/v1/chat/`, {
+  const response = await fetch(apiPath('/api/v1/chat/'), {
     method: 'POST',
     headers: await getHeaders(),
     body: JSON.stringify(data),
@@ -119,21 +126,21 @@ export interface SessionDetail {
 }
 
 export async function listSessions(): Promise<SessionInfo[]> {
-  const response = await fetch(`${API_BASE_URL}/api/v1/sessions/`, {
+  const response = await fetch(apiPath('/api/v1/sessions/'), {
     headers: await getHeaders(),
   });
   return handleResponse<SessionInfo[]>(response);
 }
 
 export async function getSession(sessionId: string): Promise<SessionDetail> {
-  const response = await fetch(`${API_BASE_URL}/api/v1/sessions/${sessionId}`, {
+  const response = await fetch(apiPath(`/api/v1/sessions/${sessionId}`), {
     headers: await getHeaders(),
   });
   return handleResponse<SessionDetail>(response);
 }
 
 export async function deleteSession(sessionId: string): Promise<void> {
-  const response = await fetch(`${API_BASE_URL}/api/v1/sessions/${sessionId}`, {
+  const response = await fetch(apiPath(`/api/v1/sessions/${sessionId}`), {
     method: 'DELETE',
     headers: await getHeaders(),
   });
@@ -153,7 +160,7 @@ export interface DocumentInfo {
 }
 
 export async function listDocuments(): Promise<DocumentInfo[]> {
-  const response = await fetch(`${API_BASE_URL}/api/v1/documents/`, {
+  const response = await fetch(apiPath('/api/v1/documents/'), {
     headers: await getHeaders(),
   });
   return handleResponse<DocumentInfo[]>(response);
@@ -162,7 +169,7 @@ export async function listDocuments(): Promise<DocumentInfo[]> {
 export async function uploadDocument(file: File): Promise<{ document_id: string; file_name: string; status: string; chunks_count: number | null; message: string }> {
   const formData = new FormData();
   formData.append('file', file);
-  const response = await fetch(`${API_BASE_URL}/api/v1/documents/upload`, {
+  const response = await fetch(apiPath('/api/v1/documents/upload'), {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${getToken()}`,
@@ -173,7 +180,7 @@ export async function uploadDocument(file: File): Promise<{ document_id: string;
 }
 
 export async function deleteDocument(documentId: string): Promise<void> {
-  const response = await fetch(`${API_BASE_URL}/api/v1/documents/${documentId}`, {
+  const response = await fetch(apiPath(`/api/v1/documents/${documentId}`), {
     method: 'DELETE',
     headers: await getHeaders(),
   });
@@ -188,6 +195,18 @@ export interface StreamMessage {
   session_id?: string;
 }
 
+function getWebSocketUrl(path: string): string {
+  if (API_BASE_URL.startsWith('https')) {
+    return `wss://${API_BASE_URL.replace(/^https?:\/\//, '')}${path}`;
+  } else if (API_BASE_URL === '/') {
+    // 상대 경로인 경우 현재 호스트 사용
+    const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+    return `${protocol}://${window.location.host}${path}`;
+  } else {
+    return `ws://${API_BASE_URL.replace(/^https?:\/\//, '')}${path}`;
+  }
+}
+
 export function createChatWebSocket(
   onContent: (token: string) => void,
   onSources: (sources: any[]) => void,
@@ -199,8 +218,7 @@ export function createChatWebSocket(
     throw new Error('인증 토큰이 없습니다.');
   }
 
-  const protocol = API_BASE_URL.startsWith('https') ? 'wss' : 'ws';
-  const wsUrl = `${protocol}://${API_BASE_URL.replace(/^https?:\/\//, '')}/api/v1/chat/ws/stream`;
+  const wsUrl = getWebSocketUrl('/api/v1/chat/ws/stream');
   
   const ws = new WebSocket(wsUrl);
 
