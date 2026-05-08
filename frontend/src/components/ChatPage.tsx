@@ -31,15 +31,25 @@ function ChatPage() {
     try {
       const token = localStorage.getItem('access_token');
       if (token) {
-        // JWT 토큰에서 사용자 정보 디코딩
-        const payload = JSON.parse(atob(token.split('.')[1]));
+        // JWT 토큰에서 사용자 정보 디코딩 (base64url 지원)
+        const base64UrlDecode = (str: string): string => {
+          let base64 = str.replace(/-/g, '+').replace(/_/g, '/');
+          while (base64.length % 4 !== 0) base64 += '=';
+          return decodeURIComponent(escape(atob(base64)));
+        };
+        
+        const payload = JSON.parse(base64UrlDecode(token.split('.')[1]));
         setUserInfo({
-          username: payload.sub,
+          username: payload.sub || 'user',
           role: payload.role || 'user',
         });
+      } else {
+        // 토큰이 없으면 기본값
+        setUserInfo({ username: 'user', role: 'user' });
       }
     } catch (err) {
       console.error('사용자 정보 파싱 실패:', err);
+      setUserInfo({ username: 'user', role: 'user' });
     }
   }, []);
 
